@@ -1,0 +1,92 @@
+---
+- name: Manage S3 Buckets
+  hosts: localhost
+  gather_facts: False
+  vars:
+    bucket_name: "my-tamiltutera2023-bucket"
+    region: "us-east-1"
+    encryption_type: "AES256"
+  vars_files:
+    - secrets.yml
+  tasks:
+    - name: Create bucket
+      amazon.aws.s3_bucket:
+        name: "{{ bucket_name }}"
+        state: present
+        versioning: true
+        encryption: "{{ encryption_type }}"
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"    
+      register: create_bucket_result
+
+    - name: Check S3 Bucket Creation Result
+      debug:
+        msg: "S3 bucket '{{ bucket_name }}' created successfully."
+      when: create_bucket_result.changed
+    
+    - name: List keys/Objects
+      amazon.aws.aws_s3:        
+        bucket: "{{ bucket_name }}"
+        mode: list
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+      register: listresult
+    - debug:
+        msg: "{{ listresult }}"
+    
+    - name: Upload keys/Objects
+      amazon.aws.aws_s3:        
+        bucket: "{{ bucket_name }}"
+        mode: put
+        src: ~/ansible_aws_s3_creation/secrets.yml
+        object: vault.yml
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+      register: upload_object_result
+    - debug:
+        msg: "{{ upload_object_result }}"
+
+    - name: List keys/Objects
+      amazon.aws.aws_s3:        
+        bucket: "{{ bucket_name }}"
+        mode: list
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+      register: uploaded_result
+    - debug:
+        msg: "{{ uploaded_result }}"
+
+    # - name: Delete S3 Bucket
+    #   vars:
+    #     bucket_name: "my-example-bucket"
+    #     region: "us-east-1"
+    #   become: yes
+    #   become_user: root
+    #   amazon.aws.aws_s3_bucket:
+    #     name: "{{ bucket_name }}"
+    #     state: absent
+    #     region: "{{ region }}"
+    #   register: delete_bucket_result
+
+    # - name: Check S3 Bucket Deletion Result
+    #   debug:
+    #     msg: "S3 bucket '{{ bucket_name }}' deleted successfully."
+    #   when: delete_bucket_result.changed
+
+    # - name: Create bucket without JSON policy
+    #   amazon.aws.s3_bucket:
+    #     name: "{{ bucket_name }}"
+    #     state: present
+    #     encryption: "{{ encryption_type }}"
+    #     aws_access_key: "{{ aws_access_key }}"
+    #     aws_secret_key: "{{ aws_secret_key }}"
+    #   register: created_bucket
+
+    # - name: Create bucket with JSON policy
+    #   amazon.aws.s3_bucket:
+    #     name: "{{ bucket_name }}"
+    #     state: present
+    #     encryption: "{{ encryption_type }}"
+    #     policy: "{{ lookup('template', '{{ bucket_policy }}-policy.json.j2') }}"
+    #   register: created_bucket
+    #   when: bucket_policy is defined
